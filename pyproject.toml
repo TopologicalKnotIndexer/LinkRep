@@ -1,0 +1,18 @@
+[project]
+name = "link-rep"
+version = "0.0.1"
+description = "representation for a composite topological link."
+authors = [
+    {name = "GGN_2015",email = "premierbob@qq.com"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "typing_extensions"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
