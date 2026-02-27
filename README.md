@@ -1,5 +1,5 @@
 # LinkRep
-非素链环的跨平台通用表示形式
+A Cross-Platform Universal Representation for Composite Links
 
 ## Installation
 
@@ -35,47 +35,47 @@ new_link_r = LinkRep()
 new_link_r.json_deserialize(json_str) # get data from json serial
 ```
 
-## LinkRep 格式
+## LinkRep Format
 
-LinkRep 的内容由四部分组成：
+The content of LinkRep consists of four parts:
 
-1. 注释行 (Comment)：使用 `//` 开头的行，以及仅仅包含空字符的行是注释行。仅仅包含空字符的行应该在解析时被忽略，而注释行应该作为信息保留下来。
+1. Comment Lines: Lines starting with `//`, as well as lines containing only whitespace characters, are comment lines. Lines containing only whitespace should be ignored during parsing, while comment lines should be retained as informational content.
 
-2. 变量命名 (VarDef)：用于定义变量，使用变量表示 PdCode，例如：
+2. Variable Definitions (VarDef): Used to define variables that represent PdCodes (Planar Diagram Codes), for example:
 
 ```
 L2a1: [[4, 1, 3, 2], [2, 3, 1, 4]]
 ```
 
-上述语句定义了一个名为 `L2a1` 的变量，其中存储一个 PdCode `[[4, 1, 3, 2], [2, 3, 1, 4]]`。其中变量名 (VarName) 应该是字母、数字、下划线构成的不以数字作为开头的字符串。可以命名多个不同名字的变量。
+The above statement defines a variable named `L2a1` that stores a PdCode `[[4, 1, 3, 2], [2, 3, 1, 4]]`. The variable name (VarName) should be a string composed of letters, numbers, and underscores, and must not start with a number. Multiple variables with different names can be defined.
 
-规则上允许变量名任意定义，但实践中建议使用标准的扭结或者链环名称对 PdCode 进行命名。使用非标准 PdCode 进行变量定义应该被警告
+While the rules allow arbitrary variable naming, in practice it is recommended to use standard knot or link names to name PdCodes. Warnings should be issued for variable definitions using non-standard PdCodes.
 
-3. 描述链环集合 (LinkSet)：使用一个变量名序列描述所有使用到的链环，这里的顺序会影响后续的使用。该描述在 LinkRep 中只可以存在一次。
+3. Link Set Description (LinkSet): A sequence of variable names describing all links used, where the order affects subsequent usage. This description can only appear once in LinkRep.
 
 ```
 [L2a1, L4a1, K3a1]
 ```
 
-这一行内容用于描述进行连通和之前的扭结信息。在连接方式描述符中，将使用 `L[i, j]` 表示第 `i` 个链环变量的第 `j` 个连通分支。其中 `i` 与 `j` 的编号从 `1` 开始向上编号。
+This line describes the knot information before performing connected sums. In the connection method descriptor, `L[i, j]` is used to denote the j-th connected component of the i-th link variable. Both `i` and `j` are numbered starting from 1 and increment upwards.
 
-4. 连接方式描述符 (LinkMethod)：描述哪些链环的哪些连通分支应该被连接在一起，例如：
+4. Connection Method Descriptor (LinkMethod): Describes which connected components of which links should be connected together, for example:
 
 ```
 L[1, 1]#L[2, 2]
 ```
 
-可以用来表示第一个链环的第一个连通分支应该和第二个链环的第二个连通分支做连通和。
+This can be used to indicate that the first connected component of the first link should be connected (via connected sum) with the second connected component of the second link.
 
 ```
 L[1, 2]#L[2, 2]#L[3, 1]
 ```
 
-可以用来表示第一个链环的第二个连通分支应该和第二个链环的第二个连通分支做连通和，在此之后该连通分支应该再和第三个链环的第一个连通分支做连通和。
+This can be used to indicate that the second connected component of the first link should be connected (via connected sum) with the second connected component of the second link, and this connected component should then be connected (via connected sum) with the first connected component of the third link.
 
-## 形式化定义
+## Formal Definition
 
-词法单元：
+Lexical Units:
 ```
 CommentLine => "//[^\n]*\n"
 VarName => "[A-Za-z_][A-Za-z0-9_]*"
@@ -83,40 +83,40 @@ PdCode  => "(\[\])|(\[\[\d+,\s*\d+,\s*\d+,\s*\d+\](,\[\d+,\s*\d+,\s*\d+,\s*\d+\]
 PosName => "L\[\d+,\s*\d+\]"
 ```
 
-VarLine：定义一个变量
+VarLine: Defines a single variable
 ```
 VarLine -> VarName ":" PdCode "\n"
 ```
 
-VarDef：定义所有变量
+VarDef: Defines all variables
 ```
 VarDef -> VarLine
 VarDef -> VarLine VarDef
 ```
 
-VarNameList：变量名列表
+VarNameList: List of variable names
 ```
 VarNameList -> VarName
 VarNameList -> VarName "," VarNameList
 ```
 
-LinkSet：定义要使用的所有链环
+LinkSet: Defines all links to be used
 ```
 LinkSet -> "[" VarNameList "]" "\n"
 ```
 
-LinkLineList：不换行的前提下用于连接连通分支
+LinkLineList: Connects connected components without line breaks
 ```
 LinkLineList -> PosName "#" PosName
 LinkLineList -> PosName "#" PosName "#" LinkLineList
 ```
 
-LinkLine: 描述一个连通分支的连接
+LinkLine: Describes the connection of connected components
 ```
 LinkLine -> LinkLineList "\n"
 ```
 
-LinkMethod：描述连通分支的连接情况
+LinkMethod: Describes the connection of connected components
 ```
 LinkMethod ->
 LinkMethod -> LinkLine
@@ -130,7 +130,7 @@ Comment -> CommentLine
 Comment -> CommentLine Comment
 ```
 
-LinkRep：
+LinkRep:
 ```
 LinkRep -> Comment VarDef LinkSet LinkMethod
 ```
