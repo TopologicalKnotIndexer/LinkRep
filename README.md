@@ -71,7 +71,7 @@ This can be used to indicate that the first connected component of the first lin
 L[1, 2]#L[2, 2]#L[3, 1]
 ```
 
-This can be used to indicate that the second connected component of the first link should be connected (via connected sum) with the second connected component of the second link, and this connected component should then be connected (via connected sum) with the first connected component of the third link.
+This can be used to indicate that the second connected component of the first link should be connected (via connected sum) with the second connected component of the second link, and this connected component should then be connected (via connected sum) with the first connected component of the third link. The order of the components is defined by the order of minimal arc number in the component.
 
 ## Formal Definition
 
@@ -79,13 +79,13 @@ Lexical Units:
 ```
 CommentLine => "//[^\n]*\n"
 VarName => "[A-Za-z_][A-Za-z0-9_]*"
-PdCode  => "(\[\])|(\[\[\d+,\s*\d+,\s*\d+,\s*\d+\](,\[\d+,\s*\d+,\s*\d+,\s*\d+\])*\])"
+PdCode  => "\[\[\d+,\s*\d+,\s*\d+,\s*\d+\](,\[\d+,\s*\d+,\s*\d+,\s*\d+\])*\]"
 PosName => "L\[\d+,\s*\d+\]"
 ```
 
 VarLine: Defines a single variable
 ```
-VarLine -> VarName ":" PdCode "\n"
+VarLine -> VarName ":\s*" PdCode "\n"
 ```
 
 VarDef: Defines all variables
