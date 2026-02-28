@@ -1,6 +1,6 @@
 [project]
 name = "link-rep"
-version = "0.0.2"
+version = "0.0.3"
 description = "representation for a composite topological link."
 authors = [
     {name = "GGN_2015",email = "premierbob@qq.com"}
