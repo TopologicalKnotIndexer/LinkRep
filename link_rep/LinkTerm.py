@@ -67,6 +67,12 @@ class LinkTerm(LinkRepMetaObject):
         # 设置元素内容
         self.set_component_list(obj_now["component_list"])
 
+    @classmethod
+    def get_link_term_from_json_str(cls, s:str) -> 'LinkTerm':
+        lt = LinkTerm()
+        lt.json_deserialize(s)
+        return lt
+
 if __name__ == "__main__":
     var_def = LinkTerm()
     var_def.set_component_list([[1, 1], [2, 1], [3, 2]])

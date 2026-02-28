@@ -60,15 +60,9 @@ class LinkMethod(LinkRepMetaObject):
         if not isinstance(obj_now.get("component_list"), list):
             raise AssertionError()
         
-        # 为了纯函数编程
-        def map_json_val_to_link_term(json_val:dict) -> LinkTerm:
-            link_term = LinkTerm()
-            link_term.json_deserialize(json.dumps(json_val))
-            return link_term
-
         # 设置元素内容
         self.set_component_list([
-            map_json_val_to_link_term(term)
+            LinkTerm.get_link_term_from_json_str(json.dumps(term))
             for term in obj_now["component_list"]
         ])
 

@@ -98,11 +98,11 @@ if __name__ == "__main__":
 // this is comment line 1
 // this is comment line 2
 L2a1: [[4, 1, 3, 2], [2, 3, 1, 4]]
-L4a1: [[6, 1, 7, 2], [8, 3, 5, 4], [2, 5, 3, 6], [4, 7, 1, 8]]
 K3a1: [[1, 5, 2, 4], [3, 1, 4, 6], [5, 3, 6, 2]]
-[L2a1, L4a1, K3a1]
-L[1, 1]#L[2, 1]
-L[2, 2]#L[3, 1]
+L4a1: [[6, 1, 7, 2], [8, 3, 5, 4], [2, 5, 3, 6], [4, 7, 1, 8]]
+[L2a1, K3a1, L4a1]
+L[1, 1]#L[3, 1]
+L[3, 2]#L[2, 1]
 """).lstrip()
     
     rev_obj = LinkRep()
@@ -117,3 +117,4 @@ L[2, 2]#L[3, 1]
     assert rev_obj_2.json_serialize() == rev_obj.json_serialize()
 
     print(rev_obj_2.serialize())
+    print(rev_obj_2.json_serialize())
