@@ -1,76 +1,65 @@
-from typing_extensions import override
+"""Ordered join operations in a TopLink representation."""
+
 import json
+from typing_extensions import override
 
 try:
     from .LinkRepMetaObject import LinkRepMetaObject
     from .LinkTerm import LinkTerm
-except:
+except ImportError:
     from LinkRepMetaObject import LinkRepMetaObject
     from LinkTerm import LinkTerm
 
-# component list 里面的元素是 LinkTerm
+
 class LinkMethod(LinkRepMetaObject):
     def __init__(self) -> None:
         super().__init__()
-        self.component_list = []
+        self.component_list: list[LinkTerm] = []
 
-    # 设置变量名的映射关系
-    def set_component_list(self, new_component_list:list[LinkTerm]) -> None:
-        self.component_list = new_component_list
-        for term in new_component_list:
-            if not isinstance(term, LinkTerm):
-                raise AssertionError()
-            
+    def set_component_list(self, new_component_list: list[LinkTerm]) -> None:
+        if not isinstance(new_component_list, list) or any(
+            not isinstance(term, LinkTerm) for term in new_component_list
+        ):
+            raise TypeError("link method must contain LinkTerm objects")
+        self.component_list = list(new_component_list)
+
     @override
     def serialize(self) -> str:
-        return "".join(list(map(
-            lambda link_term: link_term.serialize(),
-            self.component_list
-        )))
-    
+        return "".join(term.serialize() for term in self.component_list)
+
     @override
-    def deserialize(self, s:str) -> None:
-        new_arr = []
-        for term in s.split("\n"):
-            if term.find("#") != -1:
-                link_term = LinkTerm()
-                link_term.deserialize(term.strip())
-                new_arr.append(link_term)
-        self.set_component_list(new_arr)
+    def deserialize(self, s: str) -> None:
+        terms = []
+        for raw_line in s.splitlines():
+            line = raw_line.strip()
+            if not line:
+                continue
+            if "#" not in line:
+                raise ValueError(f"invalid link method line: {line!r}")
+            term = LinkTerm()
+            term.deserialize(line)
+            terms.append(term)
+        self.set_component_list(terms)
 
     @override
     def json_serialize(self) -> str:
-        return json.dumps({
-            "type": "LinkMethod",
-            "component_list": [
-                json.loads(link_term.json_serialize())
-                for link_term in self.component_list
-            ]
-        })
-    
+        return json.dumps(
+            {
+                "type": "LinkMethod",
+                "component_list": [
+                    json.loads(term.json_serialize()) for term in self.component_list
+                ],
+            }
+        )
+
     @override
-    def json_deserialize(self, s:str) -> None:
-        obj_now = json.loads(s)
-
-        # 控制类型
-        if obj_now.get("type") != "LinkMethod":
-            raise AssertionError()
-        
-        # 必须包含完整信息
-        if not isinstance(obj_now.get("component_list"), list):
-            raise AssertionError()
-        
-        # 设置元素内容
-        self.set_component_list([
-            LinkTerm.get_link_term_from_json_str(json.dumps(term))
-            for term in obj_now["component_list"]
-        ])
-
-if __name__ == "__main__":
-    var_def = LinkMethod()
-    var_def.deserialize("""\nL[1, 2]#L[2, 3]\nL[1, 3]#L[3, 3]\n""")
-
-    json_str = '{"type": "LinkMethod", "component_list": [{"type": "LinkTerm", "component_list": [[1, 2], [2, 3]]}, {"type": "LinkTerm", "component_list": [[1, 3], [3, 3]]}]}'
-    new_link = LinkMethod()
-    new_link.json_deserialize(json_str)
-    print(new_link.serialize())
+    def json_deserialize(self, s: str) -> None:
+        obj = json.loads(s)
+        if not isinstance(obj, dict) or obj.get("type") != "LinkMethod":
+            raise ValueError("JSON object is not a LinkMethod")
+        raw = obj.get("component_list")
+        if not isinstance(raw, list):
+            raise TypeError("LinkMethod.component_list must be a list")
+        self.set_component_list(
+            [LinkTerm.get_link_term_from_json_str(json.dumps(term)) for term in raw]
+        )

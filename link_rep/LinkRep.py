@@ -7,7 +7,7 @@ try:
     from .VarDef import VarDef
     from .LinkSet import LinkSet
     from .LinkMethod import LinkMethod
-except:
+except ImportError:
     from LinkRepMetaObject import LinkRepMetaObject
     from Comment import Comment
     from VarDef import VarDef
@@ -53,10 +53,10 @@ class LinkRep(LinkRepMetaObject):
             elif line.startswith("[") and line.endswith("]"):
                 link_set_list.append(line)
             else:
-                raise AssertionError()
+                raise ValueError(f"unrecognized link-representation line: {line!r}")
         
         if len(link_set_list) != 1:
-            raise AssertionError()
+            raise ValueError("link representation must contain exactly one factor set")
 
         # 依次对所有元素进行反序列化
         self.comment.deserialize("\n".join(comment_list))
@@ -80,16 +80,16 @@ class LinkRep(LinkRepMetaObject):
 
         # 控制类型
         if obj_now.get("type") != "LinkRep":
-            raise AssertionError()
+            raise ValueError("JSON object is not a LinkRep")
         
         # 必须包含完整信息
         for term_name in ["comment", "var_def", "link_set", "link_method"]:
             if not isinstance(obj_now.get(term_name), dict):
-                raise AssertionError()
+                raise TypeError(f"LinkRep.{term_name} must be a JSON object")
 
             instance_now = self.__getattribute__(term_name)
             if not isinstance(instance_now, LinkRepMetaObject):
-                raise AssertionError()
+                raise TypeError(f"LinkRep.{term_name} has an invalid target object")
             instance_now.json_deserialize(json.dumps(obj_now.get(term_name)))
 
 if __name__ == "__main__":

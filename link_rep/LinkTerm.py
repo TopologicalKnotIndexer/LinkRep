@@ -1,85 +1,66 @@
-from typing_extensions import override
+"""One component-join term in a TopLink representation."""
+
 import json
+from typing_extensions import override
 
 try:
     from .LinkRepMetaObject import LinkRepMetaObject
-except:
+except ImportError:
     from LinkRepMetaObject import LinkRepMetaObject
 
-# 这个 component_list 里面放的东西是一个 list of list
-# 每个 sub_list 中有两个整数，L[i, j] 中的 i, j
+
 class LinkTerm(LinkRepMetaObject):
     def __init__(self) -> None:
         super().__init__()
-        self.component_list = []
+        self.component_list: list[list[int]] = []
 
-    # 设置变量名的映射关系
-    def set_component_list(self, new_component_list:list[list[int]]) -> None:
-        self.component_list = new_component_list
+    def set_component_list(self, new_component_list: list[list[int]]) -> None:
+        if not isinstance(new_component_list, list) or len(new_component_list) < 2:
+            raise ValueError("a join term requires at least two component references")
+        validated: list[list[int]] = []
         for term in new_component_list:
-            if not isinstance(term, list):
-                raise AssertionError()
-            if len(term) != 2:
-                raise AssertionError()
-            for sub_term in term:
-                if not isinstance(sub_term, int):
-                    raise AssertionError()
-            
+            if not isinstance(term, list) or len(term) != 2:
+                raise ValueError("component references must be [factor, component] pairs")
+            if any(type(value) is not int or value < 1 for value in term):
+                raise ValueError("factor and component indices must be positive integers")
+            validated.append(list(term))
+        self.component_list = validated
+
     @override
     def serialize(self) -> str:
-        return "#".join(list(map(
-            lambda pr: f"L[{pr[0]}, {pr[1]}]", # 把连通分量编号
-            self.component_list
-        ))) + "\n"
-    
+        return "#".join(f"L[{left}, {right}]" for left, right in self.component_list) + "\n"
+
     @override
-    def deserialize(self, s:str) -> None:
-        new_arr = []
-        for term in s.split("#"):
-            term = term.strip()
-            if term == "":
-                raise AssertionError()
+    def deserialize(self, s: str) -> None:
+        if not isinstance(s, str):
+            raise TypeError("link term must be text")
+        parsed: list[list[int]] = []
+        for raw_term in s.split("#"):
+            term = raw_term.strip()
             if not (term.startswith("L[") and term.endswith("]")):
-                raise AssertionError()
-            li, ri = term[2:-1].split(",")
-            new_arr.append([int(li), int(ri)])
-        self.set_component_list(new_arr)
+                raise ValueError(f"invalid component reference: {term!r}")
+            parts = term[2:-1].split(",")
+            if len(parts) != 2:
+                raise ValueError("component reference must contain two indices")
+            try:
+                parsed.append([int(parts[0]), int(parts[1])])
+            except ValueError as exc:
+                raise ValueError("component indices must be integers") from exc
+        self.set_component_list(parsed)
 
     @override
     def json_serialize(self) -> str:
-        return json.dumps({
-            "type": "LinkTerm",
-            "component_list": self.component_list
-        })
-    
-    @override
-    def json_deserialize(self, s:str) -> None:
-        obj_now = json.loads(s)
+        return json.dumps({"type": "LinkTerm", "component_list": self.component_list})
 
-        # 控制类型
-        if obj_now.get("type") != "LinkTerm":
-            raise AssertionError()
-        
-        # 必须包含完整信息
-        if not isinstance(obj_now.get("component_list"), list):
-            raise AssertionError()
-        
-        # 设置元素内容
-        self.set_component_list(obj_now["component_list"])
+    @override
+    def json_deserialize(self, s: str) -> None:
+        obj = json.loads(s)
+        if not isinstance(obj, dict) or obj.get("type") != "LinkTerm":
+            raise ValueError("JSON object is not a LinkTerm")
+        self.set_component_list(obj.get("component_list"))
 
     @classmethod
-    def get_link_term_from_json_str(cls, s:str) -> 'LinkTerm':
-        lt = LinkTerm()
-        lt.json_deserialize(s)
-        return lt
-
-if __name__ == "__main__":
-    var_def = LinkTerm()
-    var_def.set_component_list([[1, 1], [2, 1], [3, 2]])
-
-    ser = var_def.serialize()
-    print(ser)
-
-    new_var = LinkTerm()
-    new_var.deserialize("L[1, 1]#L[2, 1]#L[3, 2]")
-    print(new_var.json_serialize())
+    def get_link_term_from_json_str(cls, s: str) -> "LinkTerm":
+        item = cls()
+        item.json_deserialize(s)
+        return item

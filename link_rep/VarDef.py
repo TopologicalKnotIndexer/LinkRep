@@ -1,88 +1,108 @@
-from typing_extensions import override
+"""Named PD-code definitions in a TopLink representation."""
+
+from collections import Counter
 import json
+from typing_extensions import override
 
 try:
     from .LinkRepMetaObject import LinkRepMetaObject
     from .LinkId import LinkId
-except:
+except ImportError:
     from LinkRepMetaObject import LinkRepMetaObject
     from LinkId import LinkId
 
-# 存储所有的变量定义
+
+def _valid_pd_code(pd_code: object) -> bool:
+    if not isinstance(pd_code, list):
+        return False
+    labels = []
+    label_type = None
+    for crossing in pd_code:
+        if not isinstance(crossing, list) or len(crossing) != 4:
+            return False
+        for label in crossing:
+            if isinstance(label, bool) or not isinstance(label, (int, str)):
+                return False
+            if label_type is None:
+                label_type = type(label)
+            elif type(label) is not label_type:
+                return False
+            labels.append(label)
+    return all(count == 2 for count in Counter(labels).values())
+
+
 class VarDef(LinkRepMetaObject):
     def __init__(self) -> None:
         super().__init__()
-        self.var_map = []
+        self.var_map: list[list] = []
 
-    # 设置变量名的映射关系
-    # 内层 list 中有两个元素，一个 LinkId 和一个 PdCode
-    def set_var_map(self, new_var_map:list[list]) -> None:
-        self.var_map = new_var_map
-        for item in self.var_map:
-            if not isinstance(item, list):
-                raise AssertionError()
-            if len(item) != 2:
-                raise AssertionError()
-            if not isinstance(item[0], LinkId):
-                raise AssertionError()
-            if not isinstance(item[1], list):
-                raise AssertionError()
+    def set_var_map(self, new_var_map: list[list]) -> None:
+        if not isinstance(new_var_map, list):
+            raise TypeError("variable definitions must be a list")
+        validated = []
+        names = set()
+        for item in new_var_map:
+            if not isinstance(item, list) or len(item) != 2:
+                raise ValueError("each variable definition must contain name and PD code")
+            link_id, pd_code = item
+            if not isinstance(link_id, LinkId):
+                raise TypeError("variable name must be a LinkId")
+            if not _valid_pd_code(pd_code):
+                raise ValueError(f"invalid PD code for {link_id.serialize()}")
+            name = link_id.serialize()
+            if name in names:
+                raise ValueError(f"duplicate variable definition: {name}")
+            names.add(name)
+            validated.append([link_id, pd_code])
+        self.var_map = validated
 
     @override
     def serialize(self) -> str:
-        return "".join([
-            var_pair[0].serialize() + ": " + json.dumps(var_pair[1]) + "\n"
-            for var_pair in self.var_map
-        ])
-    
+        return "".join(
+            link_id.serialize() + ": " + json.dumps(pd_code) + "\n"
+            for link_id, pd_code in self.var_map
+        )
+
     @override
-    def deserialize(self, s:str) -> None:
-        self.set_var_map([
-            [LinkId.get_link_id_from_string(item.split(":")[0].strip())
-                ,json.loads(item.split(":")[-1])]
-            for item in s.split("\n")
-            if item.find(":") != -1
-        ])
+    def deserialize(self, s: str) -> None:
+        parsed = []
+        for raw_line in s.splitlines():
+            line = raw_line.strip()
+            if not line:
+                continue
+            if ":" not in line:
+                raise ValueError(f"invalid variable definition: {line!r}")
+            name, raw_pd_code = line.split(":", 1)
+            parsed.append(
+                [LinkId.get_link_id_from_string(name.strip()), json.loads(raw_pd_code)]
+            )
+        self.set_var_map(parsed)
 
     @override
     def json_serialize(self) -> str:
-        return json.dumps({
-            "type": "VarDef",
-            "var_map": [
-                [json.loads(var_pair[0].json_serialize()),
-                    var_pair[1]]
-                for var_pair in self.var_map
-            ]
-        })
-    
+        return json.dumps(
+            {
+                "type": "VarDef",
+                "var_map": [
+                    [json.loads(link_id.json_serialize()), pd_code]
+                    for link_id, pd_code in self.var_map
+                ],
+            }
+        )
+
     @override
-    def json_deserialize(self, s:str) -> None:
-        obj_now = json.loads(s)
-
-        # 控制类型
-        if obj_now.get("type") != "VarDef":
-            raise AssertionError()
-        
-        # 必须包含完整信息
-        if not isinstance(obj_now.get("var_map"), list):
-            raise AssertionError()
-
-        # 设置元素内容
-        self.set_var_map([
-            [LinkId.get_link_id_from_json_str(json.dumps(var_pair[0])),
-                var_pair[1]]
-            for var_pair in obj_now["var_map"]
-        ])
-
-if __name__ == "__main__":
-    var_def = VarDef()
-    var_def.set_var_map([
-        [LinkId.get_link_id_from_string("L2a1"), [[4, 1, 3, 2], [2, 3, 1, 4]]],
-        [LinkId.get_link_id_from_string("L4a1"), [[6, 1, 7, 2], [8, 3, 5, 4], [2, 5, 3, 6], [4, 7, 1, 8]]]
-    ])
-
-    ser = var_def.serialize()
-    print(ser)
-    
-    var_def.deserialize(ser)
-    print(var_def.json_serialize())
+    def json_deserialize(self, s: str) -> None:
+        obj = json.loads(s)
+        if not isinstance(obj, dict) or obj.get("type") != "VarDef":
+            raise ValueError("JSON object is not a VarDef")
+        raw = obj.get("var_map")
+        if not isinstance(raw, list):
+            raise TypeError("VarDef.var_map must be a list")
+        parsed = []
+        for pair in raw:
+            if not isinstance(pair, list) or len(pair) != 2:
+                raise ValueError("invalid VarDef entry")
+            parsed.append(
+                [LinkId.get_link_id_from_json_str(json.dumps(pair[0])), pair[1]]
+            )
+        self.set_var_map(parsed)

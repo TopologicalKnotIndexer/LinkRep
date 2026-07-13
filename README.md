@@ -25,7 +25,7 @@ print(rep.json_serialize())
 
 ## Algorithm
 
-The parser separates four grammatical objects: comments, named PD-code definitions, the ordered factor set, and component-join terms. Each object has matching text and JSON serializers. Link identifiers are decomposed into mirror, knot/link, crossing, alternating, and table-index fields, which gives the rest of the toolchain a structured representation instead of ad-hoc string handling.
+The parser separates four grammatical objects: comments, named PD-code definitions, the ordered factor set, and component-join terms. Each object has matching text and JSON serializers. Link identifiers are decomposed into mirror, knot/link, crossing, alternating, and table-index fields, which gives the rest of the toolchain a structured representation instead of ad-hoc string handling. Reused parser objects reset all identifier state, definitions must be unique and contain structurally valid PD codes, and factor/component references use positive one-based indices.
 
 ## Input conventions
 
@@ -37,12 +37,13 @@ No external software is required.
 
 ## Development
 
-Run examples and package checks before release. Python packages require Python 3.10 or newer. Build PyPI artifacts with:
+Python 3.10 or newer is required. Run the parser and round-trip tests with:
 
 ```bash
-poetry check
-poetry build
+python -m unittest discover -s tests -v
 ```
+
+No PyPI publication is performed as part of repository maintenance.
 
 ## License
 

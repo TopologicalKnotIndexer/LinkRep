@@ -1,68 +1,43 @@
-from typing_extensions import override
+"""Line comments in a TopLink representation."""
+
 import json
+from typing_extensions import override
 
 try:
     from .LinkRepMetaObject import LinkRepMetaObject
-except:
+except ImportError:
     from LinkRepMetaObject import LinkRepMetaObject
 
-# 注释部分：记录每一行的注释信息
-# 存储的注释信息中不含 "//" 与行末的换行符
+
 class Comment(LinkRepMetaObject):
     def __init__(self) -> None:
         super().__init__()
-        self.msg_list = []
+        self.msg_list: list[str] = []
 
-    # 设置注释内容
-    def set_msg_list(self, new_msg_list:list[str]):
-        # 需要删除所有换行符
-        self.msg_list = list(map(
-            lambda line: line.replace("\n", ""),
-            new_msg_list
-        ))
+    def set_msg_list(self, new_msg_list: list[str]):
+        if not isinstance(new_msg_list, list) or any(
+            not isinstance(line, str) for line in new_msg_list
+        ):
+            raise TypeError("comment messages must be a list of strings")
+        self.msg_list = [line.replace("\r", "").replace("\n", "") for line in new_msg_list]
 
     @override
     def serialize(self) -> str:
-        return "".join(list(map(
-            lambda line: "//" + line + "\n",
-            self.msg_list
-        )))
-    
+        return "".join("//" + line + "\n" for line in self.msg_list)
+
     @override
-    def deserialize(self, s:str) -> None:
-        self.set_msg_list([
-            item[2:]
-            for item in s.split("\n")
-            if item.startswith("//")
-        ])
+    def deserialize(self, s: str) -> None:
+        self.set_msg_list(
+            [line[2:] for line in s.splitlines() if line.startswith("//")]
+        )
 
     @override
     def json_serialize(self) -> str:
-        return json.dumps({
-            "type": "Comment",
-            "msg_list": self.msg_list
-        })
-    
+        return json.dumps({"type": "Comment", "msg_list": self.msg_list})
+
     @override
-    def json_deserialize(self, s:str) -> None:
-        obj_now = json.loads(s)
-
-        # 控制类型
-        if obj_now.get("type") != "Comment":
-            raise AssertionError()
-        
-        # 必须包含完整信息
-        if not isinstance(obj_now.get("msg_list"), list):
-            raise AssertionError()
-        
-        # 设置元素内容
-        self.set_msg_list(obj_now["msg_list"])
-
-if __name__ == "__main__":
-    ser = """//line1
-//line2 
-//line3"""
-
-    obj = Comment()
-    obj.deserialize(ser)
-    print(obj.json_serialize())
+    def json_deserialize(self, s: str) -> None:
+        obj = json.loads(s)
+        if not isinstance(obj, dict) or obj.get("type") != "Comment":
+            raise ValueError("JSON object is not a Comment")
+        self.set_msg_list(obj.get("msg_list"))
